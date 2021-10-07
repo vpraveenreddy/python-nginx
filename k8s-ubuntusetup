@@ -1,0 +1,157 @@
+k8s on ubuntu
+https://www.youtube.com/watch?v=UWg3ORRRF60
+
+steps
+https://www.edureka.co/blog/install-kubernetes-on-ubuntu
+
+192.168.0.14 kmaster
+192.168.0.15 knode
+192.168.0.10 knode2
+
+kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=192.168.0.14 
+
+mv /etc/kubernetes/manifests/kube-apiserver.yaml /tmp/
+mv /etc/kubernetes/manifests/kube-controller-manager.yaml /tmp/
+mv /etc/kubernetes/manifests/kube-scheduler.yaml /tmp/
+mv /etc/kubernetes/manifests/etcd.yaml /tmp/
+
+
+Issues:
+
+[control-plane] Creating static Pod manifest for "kube-scheduler"
+[etcd] Creating static Pod manifest for local etcd in "/etc/kubernetes/manifests"
+[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory "/etc/kubernetes/manifests". This can take up to 4m0s
+[kubelet-check] Initial timeout of 40s passed.
+[kubelet-check] It seems like the kubelet isn't running or healthy.
+[kubelet-check] The HTTP call equal to 'curl -sSL http://localhost:10248/healthz' failed with error: Get "http://localhost:10248/healthz": dial tcp 127.0.0.1:10248: connect: connection refused.
+[kubelet-check] It seems like the kubelet isn't running or healthy.
+[kubelet-check] The HTTP call equal to 'curl -sSL http://localhost:10248/healthz' failed with error: Get "http://localhost:10248/healthz": dial tcp 127.0.0.1:10248: connect: connection refused.
+[kubelet-check] It seems like the kubelet isn't running or healthy.
+[kubelet-check] The HTTP call equal to 'curl -sSL http://localhost:10248/healthz' failed with error: Get "http://localhost:10248/healthz": dial tcp 127.0.0.1:10248: connect: connection refused.
+[kubelet-check] It seems like the kubelet isn't running or healthy.
+[kubelet-check] The HTTP call equal to 'curl -sSL http://localhost:10248/healthz' failed with error: Get "http://localhost:10248/healthz": dial tcp 127.0.0.1:10248: connect: connection refused.
+[kubelet-check] It seems like the kubelet isn't running or healthy.
+[kubelet-check] The HTTP call equal to 'curl -sSL http://localhost:10248/healthz' failed with error: Get "http://localhost:10248/healthz": dial tcp 127.0.0.1:10248: connect: connection refused.
+	Unfortunately, an error has occurred:
+		timed out waiting for the condition
+		
+Resolution: - https://giters.com/kubernetes/kubeadm/issues/2559?amp=1
+
+To whom might have the same issue, I figured out what was going on. In Ubuntu distro, 
+docker comes by default with the native control group driver cgroupfs while kublet assumes systemd. 
+So I changed the kublet config in /etc/systemd/system/kubelet.service.d/10-kubeadm to 
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --cgroup-driver=cgroupfs"
+
+
+Successful:
+====
+[addons] Applied essential addon: CoreDNS
+[addons] Applied essential addon: kube-proxy
+
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 192.168.0.14:6443 --token ufjmsd.0e5oh5est490f8u1  \
+	--discovery-token-ca-cert-hash sha256:b8a11a1c12781ab01b4ca7f81b7603b293bb20d6edde7ccd1acc5dca454161f0 
+	
+root@kmaster:~# 
+=====
+
+Issue: 
+kubectl apply -f https://docs.projectcalico.org/v3.0/getting-started/kubernetes/installation/hosted/kubeadm/1.7/calico.yaml 
+
+unable to recognize "calico.yaml": no matches for kind "Deployment" in version "apps/v1beta1" 
+unable to recognize "calico.yaml": no matches for kind "DaemonSet" in version "extensions/v1beta1"
+
+Resolution:
+curl  https://docs.projectcalico.org/manifests/calico.yaml -O
+kubectl apply -f calico.yaml
+
+Successful
+=====
+kmaster@kmaster:~$ kubectl apply -f calico.yaml
+configmap/calico-config configured
+customresourcedefinition.apiextensions.k8s.io/bgpconfigurations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/bgppeers.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/blockaffinities.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/clusterinformations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/felixconfigurations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/globalnetworkpolicies.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/globalnetworksets.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/hostendpoints.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ipamblocks.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ipamconfigs.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ipamhandles.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/ippools.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/kubecontrollersconfigurations.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/networkpolicies.crd.projectcalico.org created
+customresourcedefinition.apiextensions.k8s.io/networksets.crd.projectcalico.org created
+clusterrole.rbac.authorization.k8s.io/calico-kube-controllers configured
+clusterrolebinding.rbac.authorization.k8s.io/calico-kube-controllers unchanged
+clusterrole.rbac.authorization.k8s.io/calico-node configured
+clusterrolebinding.rbac.authorization.k8s.io/calico-node unchanged
+daemonset.apps/calico-node configured
+serviceaccount/calico-node unchanged
+deployment.apps/calico-kube-controllers configured
+serviceaccount/calico-kube-controllers unchanged
+Warning: policy/v1beta1 PodDisruptionBudget is deprecated in v1.21+, unavailable in v1.25+; use policy/v1 PodDisruptionBudget
+poddisruptionbudget.policy/calico-kube-controllers created
+kmaster@kmaster:~$ 
+
+=====
+
+
+https://stackoverflow.com/questions/51802925/applying-pod-network-calico-end-with-unable-to-recognize-no-matches-for-k
+
+kubectl create clusterrolebinding dashboard-admin -n default --clusterrole=cluster-admin --serviceaccount=default:dashboard
+
+kubectl get secret $(kubectl get serviceaccount dashboard -o jsonpath="{.secrets[0].name}") -o jsonpath="{.data.token}" | base64 --decode
+
+token
+===
+eyJhbGciOiJSUzI1NiIsImtpZCI6IkNCcldjdVZ3Mkk0Y1lmdy1oUGNRdVdaNG5DRjVqUWdFSVlXSGcxai14Q0UifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImRhc2hib2FyZC10b2tlbi0yaHJzNCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJkYXNoYm9hcmQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI5ZjRjYzBkYy1iNzBmLTQwZWUtODJhMS04OTk4NzgxNDY4YTQiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6ZGVmYXVsdDpkYXNoYm9hcmQifQ.obbaa5M_FfsUfmdObaCHXFm1qC7d6WkH990hwBq9wU2WkvLP3jb1H-28OWLBrsytufJsuYb27_RvNvhAZHAk95E2Qg6DtSDBa4KQIS0eXl5-7Rva_KZqDzCA1wwNoLpCQnhs37eKwoYl0_NYUCjKmwzIZzIqNoa2nC2GS9pXVlbLzoePi7AKne0pVaZ1rXS2ShAf8SKjQrNFZnzwxUXUCIjcQMrs710EZ4agjBHX_4vndPUu4US5nDrqX0KAhhmJE82J7rMIIJhKXxWSAPDC4InnVT40x8Nysf7x8ZZ-59wNlrHYZqQ8vaSkuDovhx0_crEOZPTWponCm8jvySz7Gw
+===
+
+
+kubeadm join 192.168.0.14:6443 --token ufjmsd.0e5oh5est490f8u1  \
+	--discovery-token-ca-cert-hash sha256:b8a11a1c12781ab01b4ca7f81b7603b293bb20d6edde7ccd1acc5dca454161f0 
+	
+knode@knode:~$ kubeadm join 192.168.0.14:6443 --token ufjmsd.0e5oh5est490f8u1  \
+> --discovery-token-ca-cert-hash sha256:b8a11a1c12781ab01b4ca7f81b7603b293bb20d6edde7ccd1acc5dca454161f0 
+[preflight] Running pre-flight checks
+error execution phase preflight: [preflight] Some fatal errors occurred:
+	[ERROR IsPrivilegedUser]: user is not running as root
+[preflight] If you know what you are doing, you can make a check non-fatal with `--ignore-preflight-errors=...`
+To see the stack trace of this error execute with --v=5 or higher
+knode@knode:~$ sudo kubeadm join 192.168.0.14:6443 --token ufjmsd.0e5oh5est490f8u1  --discovery-token-ca-cert-hash sha256:b8a11a1c12781ab01b4ca7f81b7603b293bb20d6edde7ccd1acc5dca454161f0 
+[preflight] Running pre-flight checks
+[preflight] Reading configuration from the cluster...
+[preflight] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -o yaml'
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Starting the kubelet
+[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+
+knode@knode:~$ 
+
